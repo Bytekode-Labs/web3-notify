@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Shlok D. Mange",
+  "license": "MIT",
+  "dependencies": {
+    "@types/body-parser": "^1.19.2",
+    "alchemy-sdk": "^2.2.0",
+    "body-parser": "^1.20.1",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.1",
+    "node-telegram-bot-api": "^0.59.0",
+    "pg": "^8.8.0",
+    "twilio": "^3.82.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.14",
+    "@types/node": "^18.11.0",
+    "@types/node-telegram-bot-api": "^0.57.6",
+    "@types/pg": "^8.6.5",
+    "nodemon": "^2.0.20",
+    "typescript": "^4.8.4"
+  },
+  "scripts": {
+    "dev": "nodemon dist/index.js",
+    "watch": "tsc -w",
+    "run": "ts-node src/index.ts"
+  }
+}
