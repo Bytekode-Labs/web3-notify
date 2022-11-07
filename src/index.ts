@@ -3,8 +3,10 @@ import { config } from 'dotenv'
 import { urlencoded } from 'body-parser'
 config()
 
-const app = express()
+// env vars
 const port = process.env.PORT || 8080
+
+const app = express()
 
 //middleware
 app.use(express.json())
