@@ -1,4 +1,5 @@
 import { utils } from 'ethers'
+import { createWebhooks } from './createWebhook'
 
 const valid_commands = ['add', 'remove']
 
@@ -14,7 +15,14 @@ const parseMessage = async (msg: string) => {
         if(words[0] == 'add'){
             // if 2nd word is an address, check if address exists in db
             if(utils.isAddress(words[1])){
-                return ('Successfully added')
+                try {
+                    await createWebhooks(words[1])
+                    return ('Successfully added')
+                }
+                catch (er){
+                    console.log(er)
+                    return('Unable to add wallet. Please try again')
+                }
             }
             return ('Please add a valid wallet address')
         }
