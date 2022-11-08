@@ -1,9 +1,22 @@
 import { utils } from 'ethers'
+import TelegramBot from 'node-telegram-bot-api'
+import { dynamoClient, TABLE_NAME } from '../config/dynamoDB'
 import { createWebhooks } from './createWebhook'
+import { PutCommand } from '@aws-sdk/lib-dynamodb'
 
 const valid_commands = ['add', 'remove']
 
-const parseMessage = async (msg: string) => {
+const addMessageToDB = async (message: TelegramBot.Message) => {
+    await dynamoClient.send(new PutCommand({
+        TableName: 'wallet_notifications',
+        Item: {
+            wallet_address: ''
+        }
+    }))
+}
+
+const parseMessage = async (message: TelegramBot.Message) => {
+    const msg = message.text as string
     const words = msg.trim().split(' ')
     if(words.length != 2){
         return('Please enter a valid message')
@@ -17,6 +30,7 @@ const parseMessage = async (msg: string) => {
             if(utils.isAddress(words[1])){
                 try {
                     await createWebhooks(words[1])
+                    await addMessageToDB(message)
                     return ('Successfully added')
                 }
                 catch (er){

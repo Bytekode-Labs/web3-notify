@@ -29,8 +29,6 @@ app.get('/', (req, res) => {
 telegramBot.on('message', async (message) => {
     // create alchemy webhook
     const chatId = message.chat.id
-    const msg = message.text as string
-    const response = await parseMessage(msg)
-    // await createWebhooks(`https://webhooks.com/${address}`, address)
+    const response = await parseMessage(message)
     telegramBot.sendMessage(chatId, response)
 })

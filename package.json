@@ -5,6 +5,8 @@
   "author": "Shlok D. Mange",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.204.0",
+    "@aws-sdk/lib-dynamodb": "^3.204.0",
     "@types/body-parser": "^1.19.2",
     "alchemy-sdk": "^2.2.0",
     "aws-sdk": "^2.1248.0",
