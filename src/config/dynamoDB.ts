@@ -1,6 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { config as env } from 'dotenv'
 import { DynamoDBDocument } from '@aws-sdk/lib-dynamodb'
+import { config as env } from 'dotenv'
 env()
 
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID as string

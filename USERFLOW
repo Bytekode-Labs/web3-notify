@@ -1,0 +1,28 @@
+This is the predicted userflow for pushBytes v0
+1) User sends a message to telegram => add wallet_address
+2) Check if wallet_address is on DB
+    no wallet address -> {
+        a) create a new record [addWalletToDB]
+        b) create 2 webhooks on alchemy [createWebhookFromAddress]
+    }
+    if wallet address exists -> {
+        check for incoming chat Id
+            if chat ID also exists -> send message: wallet is already added
+            no chat id -> update db table by appending chat id to chatIds array [updateChatIdForWallet]
+    }
+}
+
+schema -> wallet_notifications 
+{
+    wallet_address: primary key
+    cha-ids_subscribed: [1234, 5678, 3450],
+    webhook_ids: []
+}
+
+schema -> transaction_history
+(alchemy webhooks)
+{
+    transaction_hash: primary key
+    message: '',
+    chat_id: ''
+}

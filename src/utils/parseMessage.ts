@@ -1,26 +1,35 @@
 import { utils } from 'ethers'
 import TelegramBot from 'node-telegram-bot-api'
-import { dynamoClient, TABLE_NAME } from '../config/dynamoDB'
+import { dynamoClient } from '../config/dynamoDB'
 import { createWebhooks } from './createWebhook'
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
+import { fetchChatIdsByAddress } from './findChatIds'
 
 const valid_commands = ['add', 'remove']
 
-const addMessageToDB = async (message: TelegramBot.Message, address: string) => {
-    const { id, type } = message.chat
-    const msg = message.text as string
+const addAddress = async (message: TelegramBot.Message, address: string) => {
+    const { id } = message.chat
     await dynamoClient.send(new PutCommand({
         TableName: `wallet_notifications`,
         Item: {
             wallet_address: address,
-            id,
-            type,
-            msg
+            ids: [id]
+        }
+    }))
+}
+
+const updateChatIds = async (address: string, chatIds: Array<number>) => {
+    await dynamoClient.send(new PutCommand({
+        TableName: `wallet_notifications`,
+        Item: {
+            wallet_address: address,
+            ids: [chatIds]
         }
     }))
 }
 
 const parseMessage = async (message: TelegramBot.Message) => {
+    const { id: chatId } = message.chat
     const msg = message.text as string
     const words = msg.trim().split(' ')
     if(words.length != 2){
@@ -34,9 +43,20 @@ const parseMessage = async (message: TelegramBot.Message) => {
             // if 2nd word is an address, check if address exists in db
             if(utils.isAddress(words[1])){
                 try {
-                    await createWebhooks(words[1])
-                    await addMessageToDB(message, words[1])
-                    return ('Successfully added')
+                    // checks if address exists in db
+                    const items = await fetchChatIdsByAddress(words[1])
+                    const key = items.Item as Record<string,any>
+                    if(!key){
+                        await createWebhooks(words[1])
+                        await addAddress(message, words[1])
+                        return (`We've added your address! We'll dm you anytime you send or receive money`)
+                    }
+                    else {
+                        const chatIds = key.chat_ids as number[]
+                        let newChatIds = [...chatIds, chatId]
+                        await updateChatIds(words[1], newChatIds)
+                        return (`We've added your address! We'll dm you anytime you send or receive money`)
+                    }
                 }
                 catch (er){
                     console.log(er)
@@ -52,4 +72,4 @@ const parseMessage = async (message: TelegramBot.Message) => {
     }
 }
 
-export { parseMessage }
+export { parseMessage, updateChatIds }
