@@ -46,8 +46,13 @@ telegramBot.on('message', async (message) => {
 
 app.get('/webhooks/:address', async (req, res) => {
     const { address } = req.params 
+    const body = await req.body
+    const messageLog = body.event.activity[0]
+
+    const message = `You've got a message for ${address}📢📢\n
+        You've received ${messageLog.value} ${messageLog.asset} from ${messageLog.fromAddress}.
+    `
     console.log(address)
-    let message = `Your transaction is success`
     // get all chatIds
     try {
         const chatIds = await fetchChatIdsByAddress(address)
