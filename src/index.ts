@@ -4,6 +4,9 @@ import { urlencoded } from 'body-parser'
 import { telegramBot } from './config/telegram'
 import { parseMessage, updateChatIds } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
+import { dynamoClient } from './config/dynamoDB'
+import { GetCommand } from '@aws-sdk/lib-dynamodb'
+
 config()
 
 // env vars
@@ -41,9 +44,19 @@ telegramBot.on('message', async (message) => {
     telegramBot.sendMessage(chatId, response)
 })
 
-app.post('/test', async (req, res) => {
-    const address = '0x03f142529a7B70305C07a50fAA44f6EBDADB4624'
-    const chatIds = [1,2,3]
-    await updateChatIds(address, chatIds)
-    res.status(200)
+app.get('/webhooks/:address', async (req, res) => {
+    const { address } = req.params 
+    console.log(address)
+    let message = `Your transaction is success`
+    // get all chatIds
+    try {
+        const chatIds = await fetchChatIdsByAddress(address)
+        for(let i = 0; i < chatIds.length; i++){
+            await telegramBot.sendMessage(chatIds[i], message)
+        }
+        res.json({ message }).status(200)
+    }
+    catch(err){
+        res.json(err)
+    }
 })

@@ -1,14 +1,16 @@
 import { dynamoClient, TABLE_NAME } from '../config/dynamoDB'
-import { GetCommand } from '@aws-sdk/lib-dynamodb'
 
 const fetchChatIdsByAddress = async (address: string) => {
-    const chatIds = await dynamoClient.send(new GetCommand({
+    const chatIds = await dynamoClient.get({
         TableName: TABLE_NAME,
         Key: {
             wallet_address: address
         }
-    }))
-    return chatIds
+    })
+    if(chatIds.Item){
+        return chatIds.Item.ids as Array<number>
+    }
+    return []
 }
 
 export { fetchChatIdsByAddress }
