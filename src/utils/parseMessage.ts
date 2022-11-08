@@ -6,11 +6,16 @@ import { PutCommand } from '@aws-sdk/lib-dynamodb'
 
 const valid_commands = ['add', 'remove']
 
-const addMessageToDB = async (message: TelegramBot.Message) => {
+const addMessageToDB = async (message: TelegramBot.Message, address: string) => {
+    const { id, type } = message.chat
+    const msg = message.text as string
     await dynamoClient.send(new PutCommand({
-        TableName: 'wallet_notifications',
+        TableName: `wallet_notifications`,
         Item: {
-            wallet_address: ''
+            wallet_address: address,
+            id,
+            type,
+            msg
         }
     }))
 }
@@ -30,7 +35,7 @@ const parseMessage = async (message: TelegramBot.Message) => {
             if(utils.isAddress(words[1])){
                 try {
                     await createWebhooks(words[1])
-                    await addMessageToDB(message)
+                    await addMessageToDB(message, words[1])
                     return ('Successfully added')
                 }
                 catch (er){

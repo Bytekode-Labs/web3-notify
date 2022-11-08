@@ -9,7 +9,8 @@ const secretAccessKey = process.env.AWS_SECRET_KEY as string
 const dynamoDbClient = new DynamoDBClient({
     credentials: {
         accessKeyId, secretAccessKey
-    }
+    },
+    region: 'us-west-1'
 })
 
 const TABLE_NAME = `wallet_notifications`
