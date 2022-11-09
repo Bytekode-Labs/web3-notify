@@ -44,15 +44,13 @@ const parseMessage = async (message: TelegramBot.Message) => {
             if(utils.isAddress(words[1])){
                 try {
                     // checks if address exists in db
-                    const items = await fetchChatIdsByAddress(words[1])
-                    const key = items.Item as Record<string,any>
-                    if(!key){
+                    const chatIds = await fetchChatIdsByAddress(words[1])
+                    if(chatIds.length == 0){
                         await createWebhooks(words[1])
                         await addAddress(message, words[1])
                         return (`We've added your address! We'll dm you anytime you send or receive money`)
                     }
                     else {
-                        const chatIds = key.chat_ids as number[]
                         let newChatIds = [...chatIds, chatId]
                         await updateChatIds(words[1], newChatIds)
                         return (`We've added your address! We'll dm you anytime you send or receive money`)
