@@ -38,7 +38,7 @@ telegramBot.on('message', async (message) => {
 })
 
 // alchemy notifications webhooks
-app.get('/webhooks/:address', async (req, res) => {
+app.post('/webhooks/:address', async (req, res) => {
     const { address } = req.params 
     const body = await req.body
     const messageLog = body.event.activity[0]
