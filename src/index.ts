@@ -5,7 +5,6 @@ import { telegramBot } from './config/telegram'
 import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
 
-
 config()
 
 // env vars
@@ -39,15 +38,14 @@ telegramBot.on('message', async (message) => {
 
 // alchemy notifications webhooks
 app.post('/webhooks/:address', async (req, res) => {
-    const { address } = req.params 
+    const { address } = req.params
     const body = await req.body
-    const messageLog = body.event.activity[0]
-
+    console.log(body.event.network)
+    const messageLog = await body.event.activity[0]
+    console.log(messageLog)
     const message = `You've got a message for ${address}📢📢\n
         You've received ${messageLog.value} ${messageLog.asset} from ${messageLog.fromAddress}.
     `
-    console.log(address)
-    // get all chatIds
     try {
         const chatIds = await fetchChatIdsByAddress(address)
         for(let i = 0; i < chatIds.length; i++){
