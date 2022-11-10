@@ -30,7 +30,6 @@ app.get('/', (req, res) => {
 
 // telegram bot websockets
 telegramBot.on('message', async (message) => {
-    // create alchemy webhook
     const chatId = message.chat.id
     const response = await parseMessage(message)
     telegramBot.sendMessage(chatId, response)
