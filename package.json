@@ -31,6 +31,6 @@
     "watch": "tsc -w",
     "run": "ts-node src/index.ts",
     "start": "node index.js",
-    "build": "tsc"
+    "build": "tsc -p ."
   }
 }
