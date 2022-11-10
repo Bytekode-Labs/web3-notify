@@ -30,7 +30,7 @@
     "dev": "nodemon dist/index.js",
     "watch": "tsc -w",
     "run": "ts-node src/index.ts",
-    "start": "node index.js",
+    "start": "node dist/index.js",
     "build": "tsc -p ."
   }
 }
