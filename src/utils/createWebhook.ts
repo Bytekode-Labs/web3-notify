@@ -23,6 +23,14 @@ const createWebhooks = async (address: string) => {
               network: Network.ETH_GOERLI,
             }
         )
+        await alchemy.notify.createWebhook(
+            webhookUrl,
+            WebhookType.ADDRESS_ACTIVITY,
+            {
+              addresses: [address],
+              network: Network.ETH_MAINNET,
+            }
+        )
     }
     catch (err) {
         return err
