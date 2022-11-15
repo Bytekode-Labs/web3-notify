@@ -29,15 +29,14 @@ app.get('/', (req, res) => {
 
 
 // telegram bot websockets
-/*
 
 telegramBot.on('message', async (message) => {
     const chatId = message.chat.id
     const response = await parseMessage(message)
     telegramBot.sendMessage(chatId, response)
 })
-*/
 
+/*
 telegramBot.onText(/\/echo (.+)/, (msg, match) => {
     const { chat, date, message_id, location } = msg 
     const message = `📢 You've got a message for wallet B 📢
@@ -48,6 +47,7 @@ telegramBot.onText(/\/echo (.+)/, (msg, match) => {
     })
     console.log(chat, message_id, location)
 })
+*/
 
 // alchemy notifications webhooks
 app.post('/webhooks/:address', async (req, res) => {
@@ -55,10 +55,16 @@ app.post('/webhooks/:address', async (req, res) => {
     const body = await req.body
     console.log(body.event.network)
     const messageLog = await body.event.activity[0]
-    console.log(messageLog)
-    const message = `📢 You've got a message for ${address} 📢
+    
+    let message = `📢 You've got a message for ${address} 📢
     \nYou've received <b>${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
     `
+    console.log(messageLog)
+    if(address == messageLog.fromAddress){
+        message = `📢 You've got a message for ${address} 📢
+        \nYou've sent <b>${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
+        `
+    }
     try {
         const chatIds = await fetchChatIdsByAddress(address)
         for(let i = 0; i < chatIds.length; i++){
