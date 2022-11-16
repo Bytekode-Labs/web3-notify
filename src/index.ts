@@ -55,14 +55,16 @@ app.post('/webhooks/:address', async (req, res) => {
     const body = await req.body
     console.log(body.event.network)
     const messageLog = await body.event.activity[0]
-    
-    let message = `📢 You've got a message for ${address} 📢
-    \nYou've received <b>${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-    `
+    let message: string
     console.log(messageLog)
-    if(address == messageLog.fromAddress){
+    if(address.toLowerCase() == messageLog.fromAddress){
         message = `📢 You've got a message for ${address} 📢
-        \nYou've sent <b>${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
+        \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
+        `
+    }
+    else {
+        message = `📢 You've got a message for ${address} 📢
+        \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
         `
     }
     try {
