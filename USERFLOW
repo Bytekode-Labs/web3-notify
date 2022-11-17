@@ -26,3 +26,65 @@ schema -> transaction_history
     message: '',
     chat_id: ''
 }
+
+test erc721 transaction
+{
+  fromAddress: '0x0000000000000000000000000000000000000000',        
+  toAddress: '0xb14965a109bc43d8828472f115b08642577861dc',
+  blockNum: '0x2210494',
+  hash: '0x76da80f9102d5967f3ecef6f2191a6c99465d91e87ff49607b2bee755d2c747f',
+  erc721TokenId: '0x7b74',
+  category: 'token',
+  rawContract: {
+    rawValue: '0x',
+    address: '0x03e055692e77e56abf7f5570d9c64c194ba15616'
+  },
+  log: {
+    address: '0x03e055692e77e56abf7f5570d9c64c194ba15616',
+    topics: [
+      '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+      '0x0000000000000000000000000000000000000000000000000000000000000000',
+      '0x000000000000000000000000b14965a109bc43d8828472f115b08642577861dc',
+      '0x0000000000000000000000000000000000000000000000000000000000007b74'
+    ],
+    data: '0x',
+    blockNumber: '0x2210494',
+    transactionHash: '0x76da80f9102d5967f3ecef6f2191a6c99465d91e87ff49607b2bee755d2c747f',
+    transactionIndex: '0x27',
+    blockHash: '0x83ebf5532ca3eae0282bd29bbcef7e41c9c5ac7142150ad38792690587ae0584',
+    logIndex: '0x89',
+    removed: false
+  }
+}
+
+test erc20 transaction 
+{
+ {   
+  fromAddress: '0xae5f179c2362df044325d8dc8be19c73ac3ca5ed',        
+  toAddress: '0xb14965a109bc43d8828472f115b08642577861dc',
+  blockNum: '0x1bd891e',
+  hash: '0x063357e4d03da8cb3a7e548dd605ca668bcd68ef8bc91fe63170ded38021b66a',
+  value: 0.01,
+  asset: 'LINK',
+  category: 'token',
+  rawContract: {
+    rawValue: '0x000000000000000000000000000000000000000000000000002386f26fc10000',
+    address: '0x326c977e6efc84e512bb9c30f76e30c160ed06fb',
+    decimals: 18
+  },
+  log: {
+    address: '0x326c977e6efc84e512bb9c30f76e30c160ed06fb',
+    topics: [
+      '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+      '0x000000000000000000000000ae5f179c2362df044325d8dc8be19c73ac3ca5ed',
+      '0x000000000000000000000000b14965a109bc43d8828472f115b08642577861dc'
+    ],
+    data: '0x000000000000000000000000000000000000000000000000002386f26fc10000',
+    blockNumber: '0x1bd891e',
+    transactionHash: '0x063357e4d03da8cb3a7e548dd605ca668bcd68ef8bc91fe63170ded38021b66a',
+    transactionIndex: '0xc',
+    blockHash: '0xf24b183fbab6bccedc49e99e315b1583d258ec72cb9a782762bd3d312b419194',
+    logIndex: '0x3a',
+    removed: false
+  }
+}

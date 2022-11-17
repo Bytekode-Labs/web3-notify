@@ -4,7 +4,8 @@ import { urlencoded } from 'body-parser'
 import { telegramBot } from './config/telegram'
 import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
-import { MessageEntity } from 'node-telegram-bot-api'
+import { ethers } from 'ethers'
+
 config()
 
 // env vars
@@ -55,19 +56,48 @@ telegramBot.onText(/\/echo (.+)/, (msg, match) => {
 app.post('/webhooks/:address', async (req, res) => {
     const { address } = req.params
     const body = await req.body
-    console.log(body.event.network)
+    console.log(body)
     const messageLog = await body.event.activity[0]
-    let message: string
-    console.log(messageLog)
-    if(address.toLowerCase() == messageLog.fromAddress){
-        message = `📢 You've got a message for ${address} 📢
-        \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
-        `
+    let message = ''
+
+    if(messageLog.category == 'token'){
+        // if the transfer is an NFT transfer 
+        if(messageLog.erc721TokenId != undefined){
+            // if the user receives NFT
+            if(address.toLowerCase() == messageLog.toAddress){
+                message = `📢 You've got a message for ${address} 📢\n\n🥳Congrats on your new NFT🥳`
+            }
+            else {
+                let tokenId = ethers.BigNumber.from(messageLog.erc721TokenId)
+                message = `📢 You've got a message for ${address} 📢\n\nYour NFT with token ID: <b>${tokenId}</b> was successfully sent to <b><i>${messageLog.toAddress}</i></b>`
+            }
+        }
+        else {
+            if(address.toLowerCase() == messageLog.fromAddress){
+                message = `📢 You've got a message for ${address} 📢
+                \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
+                `
+            }
+            else {
+                message = `📢 You've got a message for ${address} 📢
+                \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
+                `
+            }    
+        }
     }
-    else {
-        message = `📢 You've got a message for ${address} 📢
-        \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-        `
+    console.log(messageLog)
+    // external transfers -> value/curreny transfer
+    if(messageLog.category == 'external'){
+        if(address.toLowerCase() == messageLog.fromAddress){
+            message = `📢 You've got a message for ${address} 📢
+            \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
+            `
+        }
+        else {
+            message = `📢 You've got a message for ${address} 📢
+            \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
+            `
+        }
     }
     try {
         const chatIds = await fetchChatIdsByAddress(address)
