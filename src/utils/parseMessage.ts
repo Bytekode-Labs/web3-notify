@@ -31,6 +31,10 @@ const updateChatIds = async (address: string, chatIds: Array<number>) => {
 const parseMessage = async (message: TelegramBot.Message) => {
     const { id: chatId } = message.chat
     const msg = message.text as string
+    if(msg.toLowerCase() == '/start'){
+        let response = `Hello Anon! Welcome to <b>insync</b> 👋\nTrack your wallet activity in real-time across <b>ETH, Polygon & more.</b>\n\nTo track an address, simply text me: \n\n<b>add 0xabcd...your_address</b>\n\nWe'll send you a message anytime you send or receive any tokens on this address\n\nLFG🚀`
+        return response
+    }
     const words = msg.trim().split(' ')
     if(words.length != 2){
         return('Please enter a valid message')

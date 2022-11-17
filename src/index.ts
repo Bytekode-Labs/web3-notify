@@ -33,7 +33,9 @@ app.get('/', (req, res) => {
 telegramBot.on('message', async (message) => {
     const chatId = message.chat.id
     const response = await parseMessage(message)
-    telegramBot.sendMessage(chatId, response)
+    telegramBot.sendMessage(chatId, response, {
+        parse_mode: 'HTML'
+    })
 })
 
 /*
