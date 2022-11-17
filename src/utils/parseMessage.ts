@@ -37,7 +37,8 @@ const parseMessage = async (message: TelegramBot.Message) => {
     }
     const words = msg.trim().split(' ')
     if(words.length != 2){
-        return('Please enter a valid message')
+        let response = `We're not sure what that message does 😶‍🌫️\n\nTo track your wallet address, simply enter this command:\n\n<b>add "your wallet address"</b>` 
+        return response
     }
     else if(!valid_commands.includes(words[0].toLowerCase())){
         return('Please enter a valid command')
