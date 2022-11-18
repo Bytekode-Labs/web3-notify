@@ -54,7 +54,7 @@ const parseMessage = async (message: TelegramBot.Message) => {
                     if(chatIds.length == 0){
                         await createWebhooks(words[1])
                         await addAddress(message, words[1])
-                        return (`We've added your address! We'll dm you anytime you send or receive money`)
+                        return (`We've added your address🥳!\n\nWe'll dm you anytime you send or receive tokens!`)
                     }
                     else {
                         let newChatIds = [...chatIds, chatId]
