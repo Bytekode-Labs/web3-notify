@@ -5,6 +5,7 @@ import { telegramBot } from './config/telegram'
 import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
 import { ethers } from 'ethers'
+import { addTransactionToDB } from './utils/addTransactionToDB'
 
 config()
 
@@ -38,19 +39,6 @@ telegramBot.on('message', async (message) => {
         parse_mode: 'HTML'
     })
 })
-
-/*
-telegramBot.onText(/\/echo (.+)/, (msg, match) => {
-    const { chat, date, message_id, location } = msg 
-    const message = `📢 You've got a message for wallet B 📢
-    \nYou've received ${`<b>0.01 MATIC</b>`} from <b><i>abc</i></b>
-    `
-    telegramBot.sendMessage(chat.id, message, {
-        parse_mode: 'HTML'
-    })
-    console.log(chat, message_id, location)
-})
-*/
 
 // alchemy notifications webhooks
 app.post('/webhooks/:address', async (req, res) => {
@@ -106,6 +94,7 @@ app.post('/webhooks/:address', async (req, res) => {
                 parse_mode: 'HTML'
             })
         }
+        await addTransactionToDB(body)
         res.json({ message }).status(200)
     }
     catch(err){
