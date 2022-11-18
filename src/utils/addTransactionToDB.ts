@@ -6,9 +6,10 @@ const addTransactionToDB = async ({
     webhookId, 
     createdAt, 
     event 
-}: IWebhookLog) => {
+}: IWebhookLog, message: string, chatIds: Array<number>) => {
 
     const { hash : transaction_hash } = event.activity
+    console.log(transaction_hash)
     try {
         const res = await dynamoClient.put({
             TableName: 'wallet_transactions',
@@ -18,7 +19,9 @@ const addTransactionToDB = async ({
                 id,
                 createdAt,
                 network: event.network,
-                activity: event.activity
+                activity: event.activity,
+                message,
+                chat_ids: chatIds
             }
         })
         return res

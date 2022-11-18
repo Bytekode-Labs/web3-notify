@@ -6,6 +6,8 @@ import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
 import { ethers } from 'ethers'
 import { addTransactionToDB } from './utils/addTransactionToDB'
+import { IWebhookLog } from './utils/interfaces/IWebhookLog'
+import { dynamoClient } from './config/dynamoDB'
 
 config()
 
@@ -45,6 +47,11 @@ app.post('/webhooks/:address', async (req, res) => {
     const { address } = req.params
     const body = await req.body
     console.log(body)
+    const { id, webhookId, createdAt, event: log } = body
+    const event = {
+        network: log.network,
+        activity: log.activity[0]
+    }
     const messageLog = await body.event.activity[0]
     let message = ''
 
@@ -94,10 +101,45 @@ app.post('/webhooks/:address', async (req, res) => {
                 parse_mode: 'HTML'
             })
         }
-        await addTransactionToDB(body)
+        await addTransactionToDB({
+            createdAt, event, id, webhookId
+        }, message, chatIds)
         res.json({ message }).status(200)
     }
     catch(err){
         res.json(err)
     }
 })
+
+/*
+
+
+app.post('/test', async (req, res) => {
+    const { id, webhookId, createdAt, event: log } = await req.body
+    const { network, activity } = log
+
+    const event = {
+        network,
+        activity: activity[0]
+    }
+
+    const webhookLog: IWebhookLog = {
+        createdAt, id, webhookId, event
+    }
+
+    await dynamoClient.put({
+        TableName: 'wallet_transactions',
+        Item: {
+            transaction_hash: event.activity.hash,
+            webhookId,
+            id,
+            createdAt,
+            network,
+            activity: event.activity
+        }
+    })
+    console.log(webhookLog)
+    // await addTransactionToDB({ id, createdAt, event, webhookId })
+    res.status(200).json({ event })
+})
+*/

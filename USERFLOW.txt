@@ -97,3 +97,5 @@ webhook
   type: 'ADDRESS_ACTIVITY',
   event: { network: 'MATIC_MUMBAI', activity: [ [Object] ] }        
 }
+
+{"rawContract":{"M":{"rawValue":{"S":"0x"},"address":{"S":"0x93C46aA4DdfD0413d95D0eF3c478982997cE9861"}}},"erc721TokenId":{"S":"0x1"},"log":{"M":{"address":{"S":"0x93C46aA4DdfD0413d95D0eF3c478982997cE9861"},"removed":{"BOOL":false},"data":{"S":"0x"},"topics":{"L":[{"S":"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"},{"S":"0x00000000000000000000000059479de9d374bdbcba6c791e5d036591976fe422"},{"S":"0x00000000000000000000000059479de9d374bdbcba6c791e5d036591976fe425"},{"S":"0x0000000000000000000000000000000000000000000000000000000000000001"}]}}},"blockNum":{"S":"0x2210494"},"fromAddress":{"S":"0xb14965A109BC43d8828472f115B08642577861dc"},"category":{"S":"token"},"toAddress":{"S":"0x59479de9d374bdbcba6c791e5d036591976fe425"},"hash":{"S":"0x76da80f9102d5967f3ecef6f2191a6c99465d91e87ff49607b2bee755d2c747f"}}
