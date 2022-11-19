@@ -20,7 +20,7 @@ const createWebhooks = async (address: string) => {
             WebhookType.ADDRESS_ACTIVITY,
             {
               addresses: [address],
-              network: Network.ETH_GOERLI,
+              network: Network.MATIC_MAINNET,
             }
         )
         await alchemy.notify.createWebhook(
