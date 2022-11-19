@@ -82,7 +82,7 @@ app.post('/webhooks/:address', async (req, res) => {
     }
     console.log(messageLog)
     // external transfers -> value/curreny transfer
-    if(messageLog.category == 'external'){
+    if(messageLog.category == 'external' && messageLog.value != 0){
         if(address.toLowerCase() == messageLog.fromAddress){
             message = `📢 You've got a message for ${address} 📢
             \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
