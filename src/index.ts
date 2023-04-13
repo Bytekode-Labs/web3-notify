@@ -6,10 +6,29 @@ import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
 import { ethers } from 'ethers'
 import { addTransactionToDB } from './utils/addTransactionToDB'
-import { IWebhookLog } from './utils/interfaces/IWebhookLog'
-import { dynamoClient } from './config/dynamoDB'
+
+
+// const provider = new ethers.providers.WebSocketProvider('wss://polygon-mumbai.g.alchemy.com/v2/CC-YaEP9wPG0mtb2SlesCoDRUlfhAppE');
 
 config()
+
+const polygon_mainnet_websocket_url = process.env.POLYGON_MAINNET_WEBSOCKET_URL as string
+
+const uniswap_contract_address = process.env.UNISWAP_CONTRACT_ADDRESS as string
+const uniswap_from_address = process.env.UNISWAP_FROM_ADDRESS as string
+const sushiswap_contract_address = process.env.SUSHISWAP_CONTRACT_ADDRESS as string  
+const sushiswap_from_address = process.env.SUSHISWAP_FROM_ADDRESS as string
+
+const provider = new ethers.providers.WebSocketProvider(polygon_mainnet_websocket_url);
+
+var txTo = '';
+var func_executed = 'xyz';
+var toToken = '';
+var fromToken = '';
+var toValue = '';
+var fromValue = '';
+var platform = '';
+var txn_network = '';
 
 // env vars
 const port = process.env.PORT || 8080
@@ -52,10 +71,45 @@ app.post('/webhooks/:address', async (req, res) => {
         network: log.network,
         activity: log.activity[0]
     }
+    txn_network = event.network
     const messageLog = await body.event.activity[0]
     let message = ''
 
-    if(messageLog.category == 'token'){
+
+
+    async function getConfirmedTransactionDetails(txHash : any) {
+        const tx = await provider.getTransaction(txHash);
+        if (tx && tx.blockNumber) {
+          if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
+              if ((tx.to)?.toLowerCase()) {
+                txTo = tx.to;
+                func_executed = await getContractABI();
+              } else {
+                console.log("Unable to get contract address from the given transaction hash.");
+              }
+          }
+        }
+      }
+    
+      async function getContractABI(): Promise<any> {
+        try {
+            if((txTo).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
+                platform = 'Sushiswap'
+                return 'swap'
+            }
+            else if((txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
+                platform = 'Uniswap'
+                return 'swap'
+            }
+        } catch (error) {
+          console.error("Error while fetching contract ABI:", error);
+        }
+        return null;
+      }
+
+      await getConfirmedTransactionDetails(messageLog.hash)
+
+      if(messageLog.category == 'token'){
         // if the transfer is an NFT transfer 
         if(messageLog.erc721TokenId != undefined){
             // if the user receives NFT
@@ -74,26 +128,37 @@ app.post('/webhooks/:address', async (req, res) => {
                 `
             }
             else {
-                message = `📢 You've got a message for ${address} 📢
-                \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-                `
+                toValue = messageLog.value;
+                toToken = messageLog.asset;
+                if((messageLog.fromAddress).toLowerCase() !== (uniswap_from_address).toLowerCase() && (messageLog.fromAddress).toLowerCase() !== (sushiswap_from_address).toLowerCase())
+                {
+                    message = `📢 You've got a message for ${address} 📢
+                    \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
+                    `
+                }
             }    
         }
     }
-    console.log(messageLog)
-    // external transfers -> value/curreny transfer
+
     if(messageLog.category == 'external' && messageLog.value != 0){
         if(address.toLowerCase() == messageLog.fromAddress){
+            fromValue = messageLog.value;
+            fromToken = messageLog.asset;
+            if((messageLog.toAddress).toLowerCase() === (uniswap_contract_address).toLowerCase() || (messageLog.toAddress).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
             message = `📢 You've got a message for ${address} 📢
-            \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
-            `
+                \n\nCongratulations 🥳 !! You've successfully swapped <b>${toValue} ${toToken}</b> for <b>${fromValue} ${fromToken}</b> on ${txn_network} via <b><i>${platform}</i></b>`
+            }
+            else{
+                message = `📢 You've got a message for ${address} 📢
+                \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>`
+            }
         }
         else {
             message = `📢 You've got a message for ${address} 📢
-            \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-            `
+            \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>`
         }
     }
+
     try {
         const chatIds = await fetchChatIdsByAddress(address)
         for(let i = 0; i < chatIds.length; i++){
@@ -110,36 +175,3 @@ app.post('/webhooks/:address', async (req, res) => {
         res.json(err)
     }
 })
-
-/*
-
-
-app.post('/test', async (req, res) => {
-    const { id, webhookId, createdAt, event: log } = await req.body
-    const { network, activity } = log
-
-    const event = {
-        network,
-        activity: activity[0]
-    }
-
-    const webhookLog: IWebhookLog = {
-        createdAt, id, webhookId, event
-    }
-
-    await dynamoClient.put({
-        TableName: 'wallet_transactions',
-        Item: {
-            transaction_hash: event.activity.hash,
-            webhookId,
-            id,
-            createdAt,
-            network,
-            activity: event.activity
-        }
-    })
-    console.log(webhookLog)
-    // await addTransactionToDB({ id, createdAt, event, webhookId })
-    res.status(200).json({ event })
-})
-*/
