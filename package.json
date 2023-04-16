@@ -11,10 +11,12 @@
     "alchemy-sdk": "^2.2.0",
     "aws-sdk": "^2.1248.0",
     "body-parser": "^1.20.1",
+    "bytekode-eth-decoder": "^1.0.5",
     "dotenv": "^16.0.3",
     "ethers": "5.7.1",
     "express": "^4.18.1",
     "node-telegram-bot-api": "^0.59.0",
+    "openai": "^3.2.1",
     "pg": "^8.8.0",
     "twilio": "^3.82.2"
   },

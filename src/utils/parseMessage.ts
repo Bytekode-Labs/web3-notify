@@ -4,6 +4,11 @@ import { dynamoClient } from '../config/dynamoDB'
 import { createWebhooks } from './createWebhook'
 import { PutCommand } from '@aws-sdk/lib-dynamodb'
 import { fetchChatIdsByAddress } from './findChatIds'
+import {config} from 'dotenv'
+
+config()
+
+const eth_mainnet_provider = process.env.ETH_MAINNET_PROVIDER as string
 
 const valid_commands = ['add', 'remove']
 
@@ -70,18 +75,25 @@ const parseMessage = async (message: TelegramBot.Message) => {
             else if(words[1].includes('.eth')){
                 try{
                     const ensAddress = words[1];
-                    const providerUrl = 'https://eth-mainnet.g.alchemy.com/v2/LatuiPPNGhXoq-yKXOr75pOLko1WxUxN'; // Replace with your own provider URL (e.g., from Infura or Alchemy)
+                    const providerUrl = eth_mainnet_provider; // Replace with your own provider URL (e.g., from Infura or Alchemy)
                     const eoaAddress = await ensToEoa(ensAddress, providerUrl);
-                    const chatIds = await fetchChatIdsByAddress(eoaAddress || '')
-                    if(chatIds.length == 0){
-                        await createWebhooks(eoaAddress || '')
-                        await addAddress(message, eoaAddress || '')
-                        return (`We've added your ENS address🥳!\n\nWe'll dm you anytime you send or receive tokens!`)
+                    if(eoaAddress == 'Error resolving ENS address')
+                    {
+                        return ('Unable to add wallet. Error resolving ENS address. Please try again')
                     }
-                    else {
-                        let newChatIds = [...chatIds, chatId]
-                        await updateChatIds(eoaAddress||'', newChatIds)
-                        return (`We've added your ENS address! We'll dm you anytime you send or receive money`)
+                    else 
+                    {
+                        const chatIds = await fetchChatIdsByAddress(eoaAddress || '')
+                        if(chatIds.length == 0){
+                            await createWebhooks(eoaAddress || '')
+                            await addAddress(message, eoaAddress || '')
+                            return (`We've added your ENS address🥳!\n\nWe'll dm you anytime you send or receive tokens!`)
+                        }
+                        else {
+                            let newChatIds = [...chatIds, chatId]
+                            await updateChatIds(eoaAddress||'', newChatIds)
+                            return (`We've added your ENS address! We'll dm you anytime you send or receive money`)
+                        }
                     }
                 }
                 catch (er){
@@ -104,14 +116,13 @@ async function ensToEoa(ensAddress: string, providerUrl: string): Promise<string
       const eoaAddress = await provider.resolveName(ensAddress);
       
       if (!eoaAddress) {
-        console.log('Could not resolve ENS address.');
-        return;
+        return 'Error resolving ENS address';
       }
       
       console.log('EOA Address:', eoaAddress);
       return eoaAddress;
     } catch (error) {
-      console.error('Error resolving ENS address:', error);
+      return 'Error resolving ENS address'
     }
   }
 

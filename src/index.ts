@@ -6,29 +6,49 @@ import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
 import { ethers } from 'ethers'
 import { addTransactionToDB } from './utils/addTransactionToDB'
-
+import { Dcyfr } from 'bytekode-eth-decoder'
+import uniswapabi from './utils/abis/UniswapABI.json'
+import sushiswapabi from './utils/abis/SushiswapABI.json'
+import { Configuration, OpenAIApi } from "openai";
 
 // const provider = new ethers.providers.WebSocketProvider('wss://polygon-mumbai.g.alchemy.com/v2/CC-YaEP9wPG0mtb2SlesCoDRUlfhAppE');
 
 config()
 
 const polygon_mainnet_websocket_url = process.env.POLYGON_MAINNET_WEBSOCKET_URL as string
-
 const uniswap_contract_address = process.env.UNISWAP_CONTRACT_ADDRESS as string
-const uniswap_from_address = process.env.UNISWAP_FROM_ADDRESS as string
-const sushiswap_contract_address = process.env.SUSHISWAP_CONTRACT_ADDRESS as string  
-const sushiswap_from_address = process.env.SUSHISWAP_FROM_ADDRESS as string
-
+const sushiswap_contract_address = process.env.SUSHISWAP_CONTRACT_ADDRESS as string
+const openai_org_id = process.env.OPENAI_ORG_ID as string
+const openai_api_key = process.env.OPENAI_API_KEY as string
 const provider = new ethers.providers.WebSocketProvider(polygon_mainnet_websocket_url);
 
-var txTo = '';
-var func_executed = 'xyz';
-var toToken = '';
-var fromToken = '';
-var toValue = '';
-var fromValue = '';
-var platform = '';
-var txn_network = '';
+interface ITransaction {
+    txTo : string,
+    func_executed : any ,
+    toToken : string,
+    fromToken : string,
+    toValue : string,
+    fromValue : string,
+    platform : string,
+    txn_network : string,
+    txndata : any,
+    response : any,
+    decodedResponse : any,
+}
+
+let details: ITransaction = {
+    txTo: "",
+    func_executed: null,
+    toToken: "",
+    fromToken: "",
+    toValue: "",
+    fromValue: "",
+    platform: "",
+    txn_network: "",
+    txndata: null,
+    response: null,
+    decodedResponse: null,
+  };
 
 // env vars
 const port = process.env.PORT || 8080
@@ -71,19 +91,24 @@ app.post('/webhooks/:address', async (req, res) => {
         network: log.network,
         activity: log.activity[0]
     }
-    txn_network = event.network
+    details.txn_network = event.network
     const messageLog = await body.event.activity[0]
     let message = ''
 
-
+    const configuration = new Configuration({
+        organization: openai_org_id,
+        apiKey: openai_api_key,
+    });
+    const openai = new OpenAIApi(configuration);
 
     async function getConfirmedTransactionDetails(txHash : any) {
         const tx = await provider.getTransaction(txHash);
         if (tx && tx.blockNumber) {
+            details.txndata = tx.data;
           if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
-                txTo = tx.to;
-                func_executed = await getContractABI();
+                details.txTo = tx.to;
+                details.func_executed = await getContractABI();
               } else {
                 console.log("Unable to get contract address from the given transaction hash.");
               }
@@ -93,14 +118,46 @@ app.post('/webhooks/:address', async (req, res) => {
     
       async function getContractABI(): Promise<any> {
         try {
-            if((txTo).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
-                platform = 'Sushiswap'
-                return 'swap'
+            if((details.txTo).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
+                const dcyfr = new Dcyfr(sushiswapabi);
+                const data = details.txndata
+                details.decodedResponse = dcyfr.getTxInfoFromData({ data })
+                details.platform = 'Sushiswap'
+                details.response = await openai.createChatCompletion({
+                    model: "gpt-3.5-turbo",
+                    messages: [{role: "user", content: `Convert the following transaction details occuring in Sushiswap into a human-understandable form:
+                    Function executed : ${details.decodedResponse?.func}
+                    input token amount: ${(details.decodedResponse?.inputData.amountIn)/10**18} ${messageLog.asset} 
+                    output token: ${details.decodedResponse?.inputData.tokenOut}
+                    `,}],
+                    temperature: 0.5,
+                    max_tokens: 200,
+                    top_p: 1.0,
+                    frequency_penalty: 0.52,
+                    presence_penalty: 0.5,
+                  });
+                return details.response.data.choices[0].message?.content
             }
-            else if((txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
-                platform = 'Uniswap'
-                return 'swap'
+            else if((details.txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
+                const dcyfr = new Dcyfr(uniswapabi);
+                const data = details.txndata
+                details.decodedResponse = dcyfr.getTxInfoFromData({ data })
+                details.platform = 'Uniswap'
+                details.response = await openai.createChatCompletion({
+                    model: "gpt-3.5-turbo",
+                    messages: [{role: "user", content: `Convert the following transaction detail occuring in Uniswap into a human-understandable form:
+                    Function executed : ${details.decodedResponse?.func},
+                    Inputs : ${details.decodedResponse?.inputData.inputs}
+                    `,}],
+                    temperature: 0.5,
+                    max_tokens: 200,
+                    top_p: 1.0,
+                    frequency_penalty: 0.52,
+                    presence_penalty: 0.5,
+                  });
+                return details.response.data.choices[0].message?.content
             }
+            
         } catch (error) {
           console.error("Error while fetching contract ABI:", error);
         }
@@ -108,6 +165,9 @@ app.post('/webhooks/:address', async (req, res) => {
       }
 
       await getConfirmedTransactionDetails(messageLog.hash)
+
+
+
 
       if(messageLog.category == 'token'){
         // if the transfer is an NFT transfer 
@@ -128,9 +188,9 @@ app.post('/webhooks/:address', async (req, res) => {
                 `
             }
             else {
-                toValue = messageLog.value;
-                toToken = messageLog.asset;
-                if((messageLog.fromAddress).toLowerCase() !== (uniswap_from_address).toLowerCase() && (messageLog.fromAddress).toLowerCase() !== (sushiswap_from_address).toLowerCase())
+                details.toValue = messageLog.value;
+                details.toToken = messageLog.asset;
+                if((details.txTo).toLowerCase() !== (uniswap_contract_address).toLowerCase() && (details.txTo).toLowerCase() !== (sushiswap_contract_address).toLowerCase())
                 {
                     message = `📢 You've got a message for ${address} 📢
                     \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
@@ -142,11 +202,12 @@ app.post('/webhooks/:address', async (req, res) => {
 
     if(messageLog.category == 'external' && messageLog.value != 0){
         if(address.toLowerCase() == messageLog.fromAddress){
-            fromValue = messageLog.value;
-            fromToken = messageLog.asset;
+            details.fromValue = messageLog.value;
+            details.fromToken = messageLog.asset;
             if((messageLog.toAddress).toLowerCase() === (uniswap_contract_address).toLowerCase() || (messageLog.toAddress).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
             message = `📢 You've got a message for ${address} 📢
-                \n\nCongratulations 🥳 !! You've successfully swapped <b>${toValue} ${toToken}</b> for <b>${fromValue} ${fromToken}</b> on ${txn_network} via <b><i>${platform}</i></b>`
+                \n\nCongratulations 🥳!! You've successfully Swapped <b>${details.toValue} ${details.toToken}</b> for <b>${details.fromValue} ${details.fromToken}</b> on ${details.txn_network} via <b><i>${details.platform}</i></b>
+                \n\n<b><i>${details.func_executed}</i></b>`
             }
             else{
                 message = `📢 You've got a message for ${address} 📢
