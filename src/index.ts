@@ -128,9 +128,9 @@ app.post('/webhooks/:address', async (req, res) => {
             if((details.txTo).toLowerCase() === (uniswap_lp_contract_address).toLowerCase()){
                 details.response = await openai.createChatCompletion({
                     model: "gpt-3.5-turbo",
-                    messages: [{role: "user", content: `A successful transaction request to add ${details.fromToken} of value ${details.fromValue} to the Liquidity pool of Uniswap has been made. Convert this into a simpler human-understandable form`,}],
+                    messages: [{role: "user", content: `A successful transaction request to deposit ${details.fromValue} ${details.fromToken} to the Liquidity pool of Uniswap has been made. Convert this into a simpler human-understandable form`,}],
                     temperature: 0.5,
-                    max_tokens: 20,
+                    max_tokens: 30,
                     top_p: 1.0,
                     frequency_penalty: 0.52,
                     presence_penalty: 0.5,
