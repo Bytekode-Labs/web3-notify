@@ -1,5 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai'
-const openaiApiKey = "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"
+import {config} from 'dotenv'
+config()
+const openaiApiKey = process.env.OPENAI_API_KEY as string
 const configuration = new Configuration({
     organization: "org-uhejXjLvZgnYlhLcvSC2KxAR",
     apiKey: openaiApiKey
