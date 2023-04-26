@@ -11,26 +11,23 @@ import uniswapabi from './utils/abis/UniswapABI.json'
 import sushiswapabi from './utils/abis/SushiswapABI.json'
 import aaveabi from './utils/abis/AaveABI.json'
 import { Configuration, OpenAIApi } from "openai";
+import { openai } from './OpenAIapi'
 
-
-
-// const provider = new ethers.providers.WebSocketProvider('wss://polygon-mainnet.g.alchemy.com/v2/s5BwByPukIVosEOZEfXU68neTN4WsDOy');
-// const testnet_provider = new ethers.providers.WebSocketProvider('wss://polygon-mumbai.g.alchemy.com/v2/CC-YaEP9wPG0mtb2SlesCoDRUlfhAppE');
 
 config()
 const polygon_testnet_websocket_url = process.env.POLYGON_TESTNET_WEBSOCKET_URL as string
 const polygon_mainnet_websocket_url = process.env.POLYGON_MAINNET_WEBSOCKET_URL as string
 const uniswap_contract_address = process.env.UNISWAP_CONTRACT_ADDRESS as string
+const uniswap_lp_contract_address = process.env.UNISWAP_LP_CONTRACT_ADDRESS as string
 const sushiswap_contract_address = process.env.SUSHISWAP_CONTRACT_ADDRESS as string
 const aave_lp_contract_address = process.env.AAVE_LP_CONTRACT_ADDRESS as string
-const openai_org_id = process.env.OPENAI_ORG_ID as string
-const openai_api_key = process.env.OPENAI_API_KEY as string
-const uniswap_lp_contract_address = process.env.UNISWAP_LP_CONTRACT_ADDRESS as string
 const provider = new ethers.providers.WebSocketProvider(polygon_mainnet_websocket_url);
 const testnet_provider = new ethers.providers.WebSocketProvider(polygon_testnet_websocket_url);
+const model = process.env.MODEL as string
 
 interface ITransaction {
     txTo : string,
+    txnHash : string,
     func_executed : any ,
     toToken : string,
     fromToken : string,
@@ -47,6 +44,7 @@ interface ITransaction {
 
 let details: ITransaction = {
     txTo: "",
+    txnHash: "",
     func_executed: null,
     toToken: "",
     fromToken: "",
@@ -110,16 +108,11 @@ app.post('/webhooks/:address', async (req, res) => {
     const messageLog = await body.event.activity[0]
     let message = ''
 
-    const configuration = new Configuration({
-        organization: openai_org_id,
-        apiKey: openai_api_key,
-    });
-    const openai = new OpenAIApi(configuration);
-
     async function getTestnetTransactionDetails(txHash : any) {
         const tx = await testnet_provider.getTransaction(txHash);
         if (tx && tx.blockNumber) {
           details.txndata = tx.data;
+          details.txnHash = txHash;
           if((tx.from ).toLowerCase() == messageLog.toAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
                   details.txTo = tx.to;
@@ -135,6 +128,7 @@ app.post('/webhooks/:address', async (req, res) => {
         const tx = await testnet_provider.getTransaction(txHash);
         if (tx && tx.blockNumber) {
           details.txndata = tx.data;
+          details.txnHash = txHash;
           if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
                   details.txTo = tx.to;
@@ -150,6 +144,7 @@ app.post('/webhooks/:address', async (req, res) => {
         const tx = await provider.getTransaction(txHash);
         if (tx && tx.blockNumber) {
           details.txndata = tx.data;
+          details.txnHash = txHash;
           if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
                 details.txTo = tx.to;
@@ -165,16 +160,13 @@ app.post('/webhooks/:address', async (req, res) => {
         try {
 
             if((details.txTo).toLowerCase() === (uniswap_lp_contract_address).toLowerCase()){
-                details.response = await openai.createChatCompletion({
-                    model: "gpt-3.5-turbo",
-                    messages: [{role: "user", content: `A successful transaction request to deposit ${details.fromValue} ${details.fromToken} to the Liquidity pool of Uniswap has been made. Convert this into a simpler human-understandable form`,}],
-                    temperature: 0.5,
-                    max_tokens: 30,
-                    top_p: 1.0,
-                    frequency_penalty: 0.52,
-                    presence_penalty: 0.5,
+                details.platform = "Uniswap";
+                details.response = await openai.createCompletion({
+                    model: model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.toToken}, Input token amount-${details.toValue}`,
+                    max_tokens: 22
                   });
-                return details.response.data.choices[0].message?.content
+                return details.response.data.choices[0]?.text
             }
 
             else if(details.txTo.toLowerCase() == (aave_lp_contract_address).toLowerCase()){
@@ -184,79 +176,54 @@ app.post('/webhooks/:address', async (req, res) => {
                 const func = details.decodedResponse?.func
                 if(func === 'repay')
                 {
-                    details.response = await openai.createChatCompletion({
-                        model: "gpt-3.5-turbo",
-                        messages: [{role: "user", content: `A successful transaction request to repay an amount of ${repayAmt} ${repayToken} to the Liquidity pool of Aave is made. Convert this into a simpler human-understandable form`,}],
-                        temperature: 0.5,
-                        max_tokens: 50,
-                        top_p: 1.0,
-                        frequency_penalty: 0.52,
-                        presence_penalty: 0.5,
-                    });
-                    return details.response.data.choices[0].message?.content
+                    details.platform = "AAVE";
+                    details.response = await openai.createCompletion({
+                        model: model,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${repayToken}, Input token amount-${repayAmt}`,
+                        max_tokens: 22
+                      });
+                    return details.response.data.choices[0]?.text
                 }
                 else if(func === 'borrow')
                 {
-                    details.response = await openai.createChatCompletion({
-                        model: "gpt-3.5-turbo",
-                        messages: [{role: "user", content: `A successful transaction request to borrow an amount of ${details.toValue} ${details.toToken} from the Liquidity pool of Aave is made. Convert this into a simpler human-understandable form`,}],
-                        temperature: 0.5,
-                        max_tokens: 50,
-                        top_p: 1.0,
-                        frequency_penalty: 0.52,
-                        presence_penalty: 0.5,
-                    });
-                    return details.response.data.choices[0].message?.content
+                    details.platform = "AAVE";
+                    details.response = await openai.createCompletion({
+                        model: model,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.toToken}, Input token amount-${details.toValue}`,
+                        max_tokens: 22
+                      });
+                    return details.response.data.choices[0]?.text
                 }
                 else if(func === 'withdraw')
                 {
-                    details.response = await openai.createChatCompletion({
-                        model: "gpt-3.5-turbo",
-                        messages: [{role: "user", content: `A successful transaction request to withdraw an amount of ${details.toValue} ${details.toToken} from the Liquidity pool of Aave is made. Convert this into a simpler human-understandable form`,}],
-                        temperature: 0.5,
-                        max_tokens: 50,
-                        top_p: 1.0,
-                        frequency_penalty: 0.52,
-                        presence_penalty: 0.5,
-                    });
-                    return details.response.data.choices[0].message?.content
+                    details.platform = "AAVE";
+                    details.response = await openai.createCompletion({
+                        model: model,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.toToken}, Input token amount-${details.toValue}`,
+                        max_tokens: 22
+                      });
+                    return details.response.data.choices[0]?.text
                 }
             }
 
             else if((details.txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
-                details.response = await openai.createChatCompletion({
-                    model: "gpt-3.5-turbo",
-                    messages: [{role: "user", content: `Convert the following transaction detail for a successful swap occuring in Uniswap into a human-understandable form:
-                    input token : ${details.fromToken}
-                    input token amount : ${details.fromValue}
-                    output token : ${details.toToken}
-                    output token amount : ${details.toValue}
-                    `,}],
-                    temperature: 0.5,
-                    max_tokens: 200,
-                    top_p: 1.0,
-                    frequency_penalty: 0.52,
-                    presence_penalty: 0.5,
+                details.platform = "Uniswap";
+                details.response = await openai.createCompletion({
+                    model: model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}, Output token-${details.toToken}, Output token amount-${details.toValue}`,
+                    max_tokens: 22
                   });
-                return details.response.data.choices[0].message?.content
+                return details.response.data.choices[0]?.text
             }
 
             else if((details.txTo).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
-                details.response = await openai.createChatCompletion({
-                    model: "gpt-3.5-turbo",
-                    messages: [{role: "user", content: `Convert the following transaction details occuring in Sushiswap into a human-understandable form:
-                    input token : ${details.fromToken}
-                    input token amount : ${details.fromValue}
-                    output token : ${details.toToken}
-                    output token amount : ${details.toValue}
-                    `,}],
-                    temperature: 0.5,
-                    max_tokens: 200,
-                    top_p: 1.0,
-                    frequency_penalty: 0.52,
-                    presence_penalty: 0.5,
+                details.platform = "Sushiswap";
+                details.response = await openai.createCompletion({
+                    model: model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}, Output token-${details.toToken}, Output token amount-${details.toValue}`,
+                    max_tokens: 22
                   });
-                return details.response.data.choices[0].message?.content
+                return details.response.data.choices[0]?.text
             }
             
         } catch (error) {
@@ -300,7 +267,7 @@ app.post('/webhooks/:address', async (req, res) => {
                     `
                 }
 
-                else if((messageLog.toAddress).toLowerCase() !== (uniswap_contract_address).toLowerCase() && (messageLog.toAddress).toLowerCase() !== (sushiswap_contract_address).toLowerCase())
+                else
                 {
                     message = `📢 You've got a message for ${address} 📢
                     \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
@@ -323,6 +290,11 @@ app.post('/webhooks/:address', async (req, res) => {
                 await getConfirmedTransactionDetails(messageLog.hash)
                 message = `📢 You've got a message for ${address} 📢
                 \n<b><i>${details.func_executed}</i></b>`
+            }
+            else
+            {
+                message = `📢 You've got a message for ${address} 📢
+                \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>`
             }
         }
         else {
