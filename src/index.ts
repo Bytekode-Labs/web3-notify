@@ -163,7 +163,7 @@ app.post('/webhooks/:address', async (req, res) => {
                 details.platform = "Uniswap";
                 details.response = await openai.createCompletion({
                     model: model,
-                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.toToken}, Input token amount-${details.toValue}`,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}`,
                     max_tokens: 22
                   });
                 return details.response.data.choices[0]?.text
