@@ -23,7 +23,7 @@ const sushiswap_contract_address = process.env.SUSHISWAP_CONTRACT_ADDRESS as str
 const aave_lp_contract_address = process.env.AAVE_LP_CONTRACT_ADDRESS as string
 const provider = new ethers.providers.WebSocketProvider(polygon_mainnet_websocket_url);
 const testnet_provider = new ethers.providers.WebSocketProvider(polygon_testnet_websocket_url);
-const model = process.env.MODEL as string
+const openai_model = process.env.OPENAI_MODEL as string
 
 interface ITransaction {
     txTo : string,
@@ -38,8 +38,6 @@ interface ITransaction {
     txndata : any,
     response : any,
     decodedResponse : any,
-    unidecodedResponse : any,
-    sushidecodedResponse : any
 }
 
 let details: ITransaction = {
@@ -55,8 +53,6 @@ let details: ITransaction = {
     txndata: null,
     response: null,
     decodedResponse: null,
-    unidecodedResponse : null,
-    sushidecodedResponse : null
   };
 
 let repayToken : string = "";
@@ -108,7 +104,7 @@ app.post('/webhooks/:address', async (req, res) => {
     const messageLog = await body.event.activity[0]
     let message = ''
 
-    async function getTestnetTransactionDetails(txHash : any) {
+    async function getAaveTransactionDetails(txHash : any) {
         const tx = await testnet_provider.getTransaction(txHash);
         if (tx && tx.blockNumber) {
           details.txndata = tx.data;
@@ -116,7 +112,7 @@ app.post('/webhooks/:address', async (req, res) => {
           if((tx.from ).toLowerCase() == messageLog.toAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
                   details.txTo = tx.to;
-                  details.func_executed = await getContractABI();
+                  details.func_executed = await aaveTransactions();
               } else {
                 console.log("Unable to get contract address from the given transaction hash.");
               }
@@ -124,7 +120,7 @@ app.post('/webhooks/:address', async (req, res) => {
         }
       }
 
-      async function getTestnetTransactionDetails2(txHash : any) {
+      async function getAaveRepayDetails(txHash : any) {
         const tx = await testnet_provider.getTransaction(txHash);
         if (tx && tx.blockNumber) {
           details.txndata = tx.data;
@@ -132,7 +128,7 @@ app.post('/webhooks/:address', async (req, res) => {
           if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
                   details.txTo = tx.to;
-                  details.func_executed = await getContractABI();
+                  details.func_executed = await aaveTransactions();
               } else {
                 console.log("Unable to get contract address from the given transaction hash.");
               }
@@ -148,28 +144,18 @@ app.post('/webhooks/:address', async (req, res) => {
           if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
               if ((tx.to)?.toLowerCase()) {
                 details.txTo = tx.to;
-                details.func_executed = await getContractABI();
+                details.func_executed = await getTransactions();
               } else {
                 console.log("Unable to get contract address from the given transaction hash.");
               }
           }
         }
       }
-    
-      async function getContractABI(): Promise<any> {
-        try {
 
-            if((details.txTo).toLowerCase() === (uniswap_lp_contract_address).toLowerCase()){
-                details.platform = "Uniswap";
-                details.response = await openai.createCompletion({
-                    model: model,
-                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}`,
-                    max_tokens: 22
-                  });
-                return details.response.data.choices[0]?.text
-            }
 
-            else if(details.txTo.toLowerCase() == (aave_lp_contract_address).toLowerCase()){
+      async function aaveTransactions(): Promise<any> {
+        try{
+            if(details.txTo.toLowerCase() == (aave_lp_contract_address).toLowerCase()){
                 const dcyfr = new Dcyfr(aaveabi)
                 const data = details.txndata
                 details.decodedResponse = dcyfr.getTxInfoFromData({ data })
@@ -178,9 +164,10 @@ app.post('/webhooks/:address', async (req, res) => {
                 {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
-                        model: model,
+                        model: openai_model,
                         prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Repay token-${repayToken}, Repay token amount-${repayAmt}`,
-                        max_tokens: 22
+                        max_tokens: 20,
+                        temperature: 0.7
                       });
                     return details.response.data.choices[0]?.text
                 }
@@ -188,9 +175,10 @@ app.post('/webhooks/:address', async (req, res) => {
                 {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
-                        model: model,
+                        model: openai_model,
                         prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Borrow token-${details.toToken}, Borrow token amount-${details.toValue}`,
-                        max_tokens: 22
+                        max_tokens: 20,
+                        temperature: 0.7
                       });
                     return details.response.data.choices[0]?.text
                 }
@@ -198,20 +186,31 @@ app.post('/webhooks/:address', async (req, res) => {
                 {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
-                        model: model,
+                        model: openai_model,
                         prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Withdraw token-${details.toToken}, Withdraw token amount-${details.toValue}`,
-                        max_tokens: 22
+                        max_tokens: 20,
+                        temperature: 0.7
                       });
                     return details.response.data.choices[0]?.text
                 }
             }
+        }
+        catch (error) {
+            console.error("Error while fetching function :", error);
+          }
+        return null;
+      }
 
-            else if((details.txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
+      async function getTransactions(): Promise<any> {
+        try {
+
+            if((details.txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
                 details.platform = "Uniswap";
                 details.response = await openai.createCompletion({
-                    model: model,
+                    model: openai_model,
                     prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}, Output token-${details.toToken}, Output token amount-${details.toValue}`,
-                    max_tokens: 22
+                    max_tokens: 20,
+                    temperature: 0.5
                   });
                 return details.response.data.choices[0]?.text
             }
@@ -219,15 +218,27 @@ app.post('/webhooks/:address', async (req, res) => {
             else if((details.txTo).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
                 details.platform = "Sushiswap";
                 details.response = await openai.createCompletion({
-                    model: model,
+                    model: openai_model,
                     prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}, Output token-${details.toToken}, Output token amount-${details.toValue}`,
-                    max_tokens: 22
+                    max_tokens: 20,
+                    temperature: 0.5
+                  });
+                return details.response.data.choices[0]?.text
+            }
+
+            else if((details.txTo).toLowerCase() === (uniswap_lp_contract_address).toLowerCase()){
+                details.platform = "Uniswap";
+                details.response = await openai.createCompletion({
+                    model: openai_model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}`,
+                    max_tokens: 20,
+                    temperature: 0.5
                   });
                 return details.response.data.choices[0]?.text
             }
             
         } catch (error) {
-          console.error("Error while fetching contract ABI:", error);
+          console.error("Error while fetching function:", error);
         }
         return null;
       }
@@ -250,7 +261,7 @@ app.post('/webhooks/:address', async (req, res) => {
                 //repay in aave
                 repayToken = messageLog.asset
                 repayAmt = messageLog.value
-                await getTestnetTransactionDetails2(messageLog.hash)
+                await getAaveRepayDetails(messageLog.hash)
                 message = `📢 You've got a message for ${address} 📢
                 \n<b><i>${details.func_executed}</i></b>
                 `
@@ -261,7 +272,7 @@ app.post('/webhooks/:address', async (req, res) => {
                 if((messageLog.toAddress).toLowerCase() === (address).toLowerCase())
                 {
                     //borrow and withdraw in aave
-                    await getTestnetTransactionDetails(messageLog.hash)
+                    await getAaveTransactionDetails(messageLog.hash)
                     message = `📢 You've got a message for ${address} 📢
                     \n<b><i>${details.func_executed}</i></b>
                     `
