@@ -179,7 +179,7 @@ app.post('/webhooks/:address', async (req, res) => {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
                         model: model,
-                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${repayToken}, Input token amount-${repayAmt}`,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Repay token-${repayToken}, Repay token amount-${repayAmt}`,
                         max_tokens: 22
                       });
                     return details.response.data.choices[0]?.text
@@ -189,7 +189,7 @@ app.post('/webhooks/:address', async (req, res) => {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
                         model: model,
-                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.toToken}, Input token amount-${details.toValue}`,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Borrow token-${details.toToken}, Borrow token amount-${details.toValue}`,
                         max_tokens: 22
                       });
                     return details.response.data.choices[0]?.text
@@ -199,7 +199,7 @@ app.post('/webhooks/:address', async (req, res) => {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
                         model: model,
-                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.toToken}, Input token amount-${details.toValue}`,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Withdraw token-${details.toToken}, Withdraw token amount-${details.toValue}`,
                         max_tokens: 22
                       });
                     return details.response.data.choices[0]?.text
