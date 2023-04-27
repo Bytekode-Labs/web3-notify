@@ -273,16 +273,19 @@ app.post('/webhooks/:address', async (req, res) => {
                 {
                     //borrow and withdraw in aave
                     await getAaveTransactionDetails(messageLog.hash)
-                    message = `📢 You've got a message for ${address} 📢
-                    \n<b><i>${details.func_executed}</i></b>
-                    `
-                }
 
-                else
-                {
-                    message = `📢 You've got a message for ${address} 📢
-                    \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-                    `
+                    if(details.func_executed !== null)
+                    {
+                        message = `📢 You've got a message for ${address} 📢
+                        \n<b><i>${details.func_executed}</i></b>
+                        `
+                    }
+                    else
+                    {
+                        message = `📢 You've got a message for ${address} 📢
+                        \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
+                        `
+                    }
                 }
             }    
         }
