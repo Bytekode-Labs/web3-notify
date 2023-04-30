@@ -165,8 +165,8 @@ app.post('/webhooks/:address', async (req, res) => {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
                         model: openai_model,
-                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Repay token-${repayToken}, Repay token amount-${repayAmt}`,
-                        max_tokens: 20,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, User Address-${address}, Repay token-${repayToken}, Repay token amount-${repayAmt}`,
+                        max_tokens: 50,
                         temperature: 0.7
                       });
                     return details.response.data.choices[0]?.text
@@ -176,8 +176,8 @@ app.post('/webhooks/:address', async (req, res) => {
                     details.platform = "AAVE";
                     details.response = await openai.createCompletion({
                         model: openai_model,
-                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Borrow token-${details.toToken}, Borrow token amount-${details.toValue}`,
-                        max_tokens: 20,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, User Address-${address}, Borrow token-${details.toToken}, Borrow token amount-${details.toValue}`,
+                        max_tokens: 50,
                         temperature: 0.7
                       });
                     return details.response.data.choices[0]?.text
@@ -188,7 +188,7 @@ app.post('/webhooks/:address', async (req, res) => {
                     details.response = await openai.createCompletion({
                         model: openai_model,
                         prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Withdraw token-${details.toToken}, Withdraw token amount-${details.toValue}`,
-                        max_tokens: 20,
+                        max_tokens: 18,
                         temperature: 0.7
                       });
                     return details.response.data.choices[0]?.text
@@ -262,9 +262,7 @@ app.post('/webhooks/:address', async (req, res) => {
                 repayToken = messageLog.asset
                 repayAmt = messageLog.value
                 await getAaveRepayDetails(messageLog.hash)
-                message = `📢 You've got a message for ${address} 📢
-                \n<b><i>${details.func_executed}</i></b>
-                `
+                message = `<b><i>${details.func_executed}</i></b>`
             }
             else {
                 details.toValue = messageLog.value;
@@ -276,15 +274,11 @@ app.post('/webhooks/:address', async (req, res) => {
 
                     if(details.func_executed !== null)
                     {
-                        message = `📢 You've got a message for ${address} 📢
-                        \n<b><i>${details.func_executed}</i></b>
-                        `
+                        message = `<b><i>${details.func_executed}</i></b>`
                     }
                     else
                     {
-                        message = `📢 You've got a message for ${address} 📢
-                        \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-                        `
+                        message = `Your address ${address} received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>`
                     }
                 }
             }    
@@ -307,13 +301,11 @@ app.post('/webhooks/:address', async (req, res) => {
             }
             else
             {
-                message = `📢 You've got a message for ${address} 📢
-                \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>`
+                message = `You've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b> from your address ${address}`
             }
         }
         else {
-            message = `📢 You've got a message for ${address} 📢
-            \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>`
+            message = `Your address ${address} received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>`
         }
     }
 
