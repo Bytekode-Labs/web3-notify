@@ -6,10 +6,57 @@ import { parseMessage } from './utils/parseMessage'
 import { fetchChatIdsByAddress } from './utils/findChatIds'
 import { ethers } from 'ethers'
 import { addTransactionToDB } from './utils/addTransactionToDB'
-import { IWebhookLog } from './utils/interfaces/IWebhookLog'
-import { dynamoClient } from './config/dynamoDB'
+import { Dcyfr } from 'bytekode-eth-decoder'
+import uniswapabi from './utils/abis/UniswapABI.json'
+import sushiswapabi from './utils/abis/SushiswapABI.json'
+import aaveabi from './utils/abis/AaveABI.json'
+import { Configuration, OpenAIApi } from "openai";
+import { openai } from './OpenAIapi'
+
 
 config()
+const polygon_testnet_websocket_url = process.env.POLYGON_TESTNET_WEBSOCKET_URL as string
+const polygon_mainnet_websocket_url = process.env.POLYGON_MAINNET_WEBSOCKET_URL as string
+const uniswap_contract_address = process.env.UNISWAP_CONTRACT_ADDRESS as string
+const uniswap_lp_contract_address = process.env.UNISWAP_LP_CONTRACT_ADDRESS as string
+const sushiswap_contract_address = process.env.SUSHISWAP_CONTRACT_ADDRESS as string
+const aave_lp_contract_address = process.env.AAVE_LP_CONTRACT_ADDRESS as string
+const provider = new ethers.providers.WebSocketProvider(polygon_mainnet_websocket_url);
+const testnet_provider = new ethers.providers.WebSocketProvider(polygon_testnet_websocket_url);
+const openai_model = process.env.OPENAI_MODEL as string
+
+interface ITransaction {
+    txTo : string,
+    txnHash : string,
+    func_executed : any ,
+    toToken : string,
+    fromToken : string,
+    toValue : string,
+    fromValue : string,
+    platform : string,
+    txn_network : string,
+    txndata : any,
+    response : any,
+    decodedResponse : any,
+}
+
+let details: ITransaction = {
+    txTo: "",
+    txnHash: "",
+    func_executed: null,
+    toToken: "",
+    fromToken: "",
+    toValue: "",
+    fromValue: "",
+    platform: "",
+    txn_network: "",
+    txndata: null,
+    response: null,
+    decodedResponse: null,
+  };
+
+let repayToken : string = "";
+let repayAmt : string = "";
 
 // env vars
 const port = process.env.PORT || 8080
@@ -52,10 +99,152 @@ app.post('/webhooks/:address', async (req, res) => {
         network: log.network,
         activity: log.activity[0]
     }
+
+    details.txn_network = event.network
     const messageLog = await body.event.activity[0]
     let message = ''
 
-    if(messageLog.category == 'token'){
+    async function getAaveTransactionDetails(txHash : any) {
+        const tx = await testnet_provider.getTransaction(txHash);
+        if (tx && tx.blockNumber) {
+          details.txndata = tx.data;
+          details.txnHash = txHash;
+          if((tx.from ).toLowerCase() == messageLog.toAddress.toLowerCase()){
+              if ((tx.to)?.toLowerCase()) {
+                  details.txTo = tx.to;
+                  details.func_executed = await aaveTransactions();
+              } else {
+                console.log("Unable to get contract address from the given transaction hash.");
+              }
+          }
+        }
+      }
+
+      async function getAaveRepayDetails(txHash : any) {
+        const tx = await testnet_provider.getTransaction(txHash);
+        if (tx && tx.blockNumber) {
+          details.txndata = tx.data;
+          details.txnHash = txHash;
+          if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
+              if ((tx.to)?.toLowerCase()) {
+                  details.txTo = tx.to;
+                  details.func_executed = await aaveTransactions();
+              } else {
+                console.log("Unable to get contract address from the given transaction hash.");
+              }
+          }
+        }
+      }
+
+    async function getConfirmedTransactionDetails(txHash : any) {
+        const tx = await provider.getTransaction(txHash);
+        if (tx && tx.blockNumber) {
+          details.txndata = tx.data;
+          details.txnHash = txHash;
+          if((tx.from ).toLowerCase() == messageLog.fromAddress.toLowerCase()){
+              if ((tx.to)?.toLowerCase()) {
+                details.txTo = tx.to;
+                details.func_executed = await getTransactions();
+              } else {
+                console.log("Unable to get contract address from the given transaction hash.");
+              }
+          }
+        }
+      }
+
+
+      async function aaveTransactions(): Promise<any> {
+        try{
+            if(details.txTo.toLowerCase() == (aave_lp_contract_address).toLowerCase()){
+                const dcyfr = new Dcyfr(aaveabi)
+                const data = details.txndata
+                details.decodedResponse = dcyfr.getTxInfoFromData({ data })
+                const func = details.decodedResponse?.func
+                if(func === 'repay')
+                {
+                    details.platform = "AAVE";
+                    details.response = await openai.createCompletion({
+                        model: openai_model,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, User Address-${address}, Repay token-${repayToken}, Repay token amount-${repayAmt}`,
+                        max_tokens: 50,
+                        temperature: 0.7
+                      });
+                    return details.response.data.choices[0]?.text
+                }
+                else if(func === 'borrow')
+                {
+                    details.platform = "AAVE";
+                    details.response = await openai.createCompletion({
+                        model: openai_model,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, User Address-${address}, Borrow token-${details.toToken}, Borrow token amount-${details.toValue}`,
+                        max_tokens: 50,
+                        temperature: 0.7
+                      });
+                    return details.response.data.choices[0]?.text
+                }
+                else if(func === 'withdraw')
+                {
+                    details.platform = "AAVE";
+                    details.response = await openai.createCompletion({
+                        model: openai_model,
+                        prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Withdraw token-${details.toToken}, Withdraw token amount-${details.toValue}`,
+                        max_tokens: 18,
+                        temperature: 0.7
+                      });
+                    return details.response.data.choices[0]?.text
+                }
+            }
+        }
+        catch (error) {
+            console.error("Error while fetching function :", error);
+          }
+        return null;
+      }
+
+      async function getTransactions(): Promise<any> {
+        try {
+
+            if((details.txTo).toLowerCase() === (uniswap_contract_address).toLowerCase()){
+                details.platform = "Uniswap";
+                details.response = await openai.createCompletion({
+                    model: openai_model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}, Output token-${details.toToken}, Output token amount-${details.toValue}`,
+                    max_tokens: 20,
+                    temperature: 0.5
+                  });
+                return details.response.data.choices[0]?.text
+            }
+
+            else if((details.txTo).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
+                details.platform = "Sushiswap";
+                details.response = await openai.createCompletion({
+                    model: openai_model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}, Output token-${details.toToken}, Output token amount-${details.toValue}`,
+                    max_tokens: 20,
+                    temperature: 0.5
+                  });
+                return details.response.data.choices[0]?.text
+            }
+
+            else if((details.txTo).toLowerCase() === (uniswap_lp_contract_address).toLowerCase()){
+                details.platform = "Uniswap";
+                details.response = await openai.createCompletion({
+                    model: openai_model,
+                    prompt: `Convert the following transaction details into human understandable form: Transaction hash-${details.txnHash}, Platform-${details.platform}, Input token-${details.fromToken}, Input token amount-${details.fromValue}`,
+                    max_tokens: 20,
+                    temperature: 0.5
+                  });
+                return details.response.data.choices[0]?.text
+            }
+            
+        } catch (error) {
+          console.error("Error while fetching function:", error);
+        }
+        return null;
+      }
+
+
+      if(messageLog.category == 'token'){
         // if the transfer is an NFT transfer 
         if(messageLog.erc721TokenId != undefined){
             // if the user receives NFT
@@ -69,31 +258,57 @@ app.post('/webhooks/:address', async (req, res) => {
         }
         else {
             if(address.toLowerCase() == messageLog.fromAddress){
-                message = `📢 You've got a message for ${address} 📢
-                \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
-                `
+                //repay in aave
+                repayToken = messageLog.asset
+                repayAmt = messageLog.value
+                await getAaveRepayDetails(messageLog.hash)
+                message = `<b><i>${details.func_executed}</i></b>`
             }
             else {
-                message = `📢 You've got a message for ${address} 📢
-                \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-                `
+                details.toValue = messageLog.value;
+                details.toToken = messageLog.asset;
+                if((messageLog.toAddress).toLowerCase() === (address).toLowerCase())
+                {
+                    //borrow and withdraw in aave
+                    await getAaveTransactionDetails(messageLog.hash)
+
+                    if(details.func_executed !== null)
+                    {
+                        message = `<b><i>${details.func_executed}</i></b>`
+                    }
+                    else
+                    {
+                        message = `Your address ${address} received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>`
+                    }
+                }
             }    
         }
     }
-    console.log(messageLog)
-    // external transfers -> value/curreny transfer
+
     if(messageLog.category == 'external' && messageLog.value != 0){
         if(address.toLowerCase() == messageLog.fromAddress){
-            message = `📢 You've got a message for ${address} 📢
-            \nYou've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b>
-            `
+            details.fromValue = messageLog.value;
+            details.fromToken = messageLog.asset;
+            if((messageLog.toAddress).toLowerCase() === (uniswap_contract_address).toLowerCase() || (messageLog.toAddress).toLowerCase() === (sushiswap_contract_address).toLowerCase()){
+                await getConfirmedTransactionDetails(messageLog.hash)
+                message = `📢 You've got a message for ${address} 📢
+                \n<b><i>${details.func_executed}</i></b>`
+            }
+            else if((messageLog.toAddress).toLowerCase() === (uniswap_lp_contract_address).toLowerCase()){
+                await getConfirmedTransactionDetails(messageLog.hash)
+                message = `📢 You've got a message for ${address} 📢
+                \n<b><i>${details.func_executed}</i></b>`
+            }
+            else
+            {
+                message = `You've sent <b>${messageLog.value} ${messageLog.asset}</b> to <b><i>${messageLog.toAddress}</i></b> from your address ${address}`
+            }
         }
         else {
-            message = `📢 You've got a message for ${address} 📢
-            \nYou've received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>
-            `
+            message = `Your address ${address} received <b>${messageLog.value} ${messageLog.asset}</b> from <b><i>${messageLog.fromAddress}</i></b>`
         }
     }
+
     try {
         const chatIds = await fetchChatIdsByAddress(address)
         for(let i = 0; i < chatIds.length; i++){
@@ -110,36 +325,3 @@ app.post('/webhooks/:address', async (req, res) => {
         res.json(err)
     }
 })
-
-/*
-
-
-app.post('/test', async (req, res) => {
-    const { id, webhookId, createdAt, event: log } = await req.body
-    const { network, activity } = log
-
-    const event = {
-        network,
-        activity: activity[0]
-    }
-
-    const webhookLog: IWebhookLog = {
-        createdAt, id, webhookId, event
-    }
-
-    await dynamoClient.put({
-        TableName: 'wallet_transactions',
-        Item: {
-            transaction_hash: event.activity.hash,
-            webhookId,
-            id,
-            createdAt,
-            network,
-            activity: event.activity
-        }
-    })
-    console.log(webhookLog)
-    // await addTransactionToDB({ id, createdAt, event, webhookId })
-    res.status(200).json({ event })
-})
-*/

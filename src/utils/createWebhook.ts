@@ -7,34 +7,50 @@ const createWebhooks = async (address: string) => {
     let webhookUrl = `${baseUrl}/webhooks/${address}`
     
     try {
-        await alchemy.notify.createWebhook(
-            webhookUrl,
-            WebhookType.ADDRESS_ACTIVITY,
-            {
-              addresses: [address],
-              network: Network.MATIC_MUMBAI,
-            }
-        )
-        await alchemy.notify.createWebhook(
-            webhookUrl,
-            WebhookType.ADDRESS_ACTIVITY,
-            {
-              addresses: [address],
-              network: Network.MATIC_MAINNET,
-            }
-        )
-        await alchemy.notify.createWebhook(
-            webhookUrl,
-            WebhookType.ADDRESS_ACTIVITY,
-            {
-              addresses: [address],
-              network: Network.ETH_MAINNET,
-            }
-        )
-    }
-    catch (err) {
-        return err
-    }
+      await alchemy.notify.createWebhook(
+          webhookUrl,
+          WebhookType.ADDRESS_ACTIVITY,
+          {
+            addresses: [address],
+            network: Network.MATIC_MUMBAI,
+          }
+      )
+      await alchemy.notify.createWebhook(
+          webhookUrl,
+          WebhookType.ADDRESS_ACTIVITY,
+          {
+            addresses: [address],
+            network: Network.MATIC_MAINNET,
+          }
+      )
+      await alchemy.notify.createWebhook(
+          webhookUrl,
+          WebhookType.ADDRESS_ACTIVITY,
+          {
+            addresses: [address],
+            network: Network.ARB_MAINNET,
+          }
+      )
+      await alchemy.notify.createWebhook(
+        webhookUrl,
+        WebhookType.ADDRESS_ACTIVITY,
+        {
+          addresses: [address],
+          network: Network.OPT_MAINNET,
+        }
+    )
+      await alchemy.notify.createWebhook(
+          webhookUrl,
+          WebhookType.ADDRESS_ACTIVITY,
+          {
+            addresses: [address],
+            network: Network.ETH_MAINNET,
+          }
+      )
+  }
+  catch (err) {
+      return err
+  }
 }
 
 export { createWebhooks }
